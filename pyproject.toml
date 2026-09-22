@@ -12,6 +12,10 @@ requires-python = ">=3.12"
 cluster = [
     "datapins @ git+ssh://git@github.com/APrioriInvestments/datapins.git@v0.1.2",
     "databricks-etl-utils @ git+ssh://git@github.com/APrioriInvestments/databricks-etl-utils.git@v0.6.0",
+    # util/matlab_export.py is the gs implementation ported in, so the .mat matches
+    # what the MATLAB side loads for gs and jpm. It needs scipy directly; the shared
+    # databricks-export-matlab library is deliberately not used here.
+    "scipy>=1.11.0",
 ]
 
 [tool.uv.build-backend]

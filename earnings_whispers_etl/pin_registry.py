@@ -23,6 +23,10 @@ pins.register_table(
     f"{DEFAULT_CATALOG}.silver.whisper_numbers",
 )
 
+# Gold: the presentation cut -- silver without the columns a consumer of the MATLAB
+# export does not use (ticker, release_time, confirmed, source).
+pins.register_table("gold.whisper_numbers", f"{DEFAULT_CATALOG}.gold.whisper_numbers")
+
 pins.register_table(
     "eng.pin_audit",
     f"{DEFAULT_CATALOG}.eng.pin_audit",
@@ -31,3 +35,4 @@ pins.register_table(
 # No checkpoints: neither task streams. Both are batch, and silver is a full rebuild.
 pins.register_volume("eng.config", f"/Volumes/{DEFAULT_CATALOG}/eng/config")
 pins.register_volume("eng.logs", f"/Volumes/{DEFAULT_CATALOG}/eng/logs")
+pins.register_volume("matlab.exports", f"/Volumes/{DEFAULT_CATALOG}/matlab/exports")

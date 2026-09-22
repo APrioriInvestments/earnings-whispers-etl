@@ -47,6 +47,13 @@ def backhistory(table: str, extract_rank: int):
         # WhisperDate is TIMESTAMP_NTZ holding a US Eastern wall clock, and the session
         # runs in UTC — a plain cast would read 07:49 as 07:49Z and shift every row 4-5h,
         # DST-dependent. to_utc_timestamp reads it as Eastern and yields the right instant.
+        #
+        # Rows before 2011 carry no time component: the vendor recorded a date only, so
+        # they land at midnight ET. 88-93% of 2006-2009 rows and 57% of 2010 are
+        # date-only; from 2011 it is ~0%. Midnight on those rows is absence of data, not
+        # an observed time, so treating it as the known-at moment grants up to a day of
+        # lookahead. For comparison, rows that do carry a time cluster at 07:00-09:00 ET
+        # (pre-market) with a second bump at 16:00-18:00, median 11:37.
         F.to_utc_timestamp(F.col("WhisperDate"), "America/New_York").alias("timestamp"),
         F.col("Date").alias("earnings_announcement_date"),
         F.col("QuarterDate").alias("quarter_end_date"),
