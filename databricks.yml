@@ -27,9 +27,10 @@ artifacts:
     path: .
 
 targets:
-  # REPLACE_ME_DEPLOY_PRINCIPAL x3: these exist only once the project's ProjectSpec has
-  # been merged into databricks-account-iac and deployed. Take each from that project's
-  # `<project>-<env>` GitHub Environment, variable DEPLOY_CLIENT_ID.
+  # Each `deploy_principal` below is that environment's DEPLOY_CLIENT_ID, from the
+  # `earnings-whispers-<env>` GitHub Environment the registry created. They must stay in
+  # step: `root_path` is derived from the principal, so a stale id silently writes a
+  # second state file under the wrong user.
   dev:
     mode: development
     default: true
@@ -39,7 +40,7 @@ targets:
     variables:
       catalog: earnings_whispers_dev
       monitoring_job_name: earnings_whispers_etl
-      deploy_principal: REPLACE_ME_DEPLOY_PRINCIPAL
+      deploy_principal: 9ae5541a-e33a-4851-b1cc-5d87b8a1d4ac
     presets:
       name_prefix: "[dev ${workspace.current_user.short_name}] "
       trigger_pause_status: PAUSED
@@ -55,9 +56,12 @@ targets:
     variables:
       catalog: earnings_whispers_stg
       monitoring_job_name: earnings_whispers_etl
-      deploy_principal: REPLACE_ME_DEPLOY_PRINCIPAL
+      deploy_principal: 93a43071-b78f-4a6a-882b-441557994cac
     presets:
-      trigger_pause_status: PAUSED
+      trigger_pause_status: UNPAUSED
+      # Staging is the ticking environment here: it runs as a service principal in
+      # no legacy groups, so it exercises the access model a dev run (as the engineer)
+      # would hide. dbxkit lint treats an unpaused staging trigger as a warning.
       tags:
         project: demo
         managed_by: dabs
@@ -70,9 +74,11 @@ targets:
     variables:
       catalog: earnings_whispers_prod
       monitoring_job_name: earnings_whispers_etl
-      deploy_principal: REPLACE_ME_DEPLOY_PRINCIPAL
+      deploy_principal: df41ba10-6276-47cf-8408-31217af949c2
     presets:
-      trigger_pause_status: UNPAUSED
+      trigger_pause_status: PAUSED
+      # Deliberately dormant: the prod secret scope exists but holds no api-key, so a
+      # run here would fail. Unpause once someone adds it.
       tags:
         project: demo
         managed_by: dabs

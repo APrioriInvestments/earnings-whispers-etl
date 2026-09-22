@@ -2,7 +2,7 @@ resources:
   jobs:
     etl:
       name: ${var.catalog}__etl
-      description: Template bronze -> silver -> gold ETL for product data
+      description: Ingest the Earnings Whispers feed and rebuild silver.whisper_numbers
       max_concurrent_runs: 1
       queue:
         enabled: true
@@ -22,7 +22,7 @@ resources:
       # No pause_status: each target's `trigger_pause_status` preset sets it, and a value
       # here would win over the preset.
       schedule:
-        quartz_cron_expression: 0 0 6 * * ?
+        quartz_cron_expression: 0 0 7 * * ?
         timezone_id: America/New_York
 
       job_clusters:
@@ -56,34 +56,31 @@ resources:
               # boots and GitHub is out of the critical path of a cluster start.
 
       tasks:
-        - task_key: bronze_ingest_products
+        - task_key: bronze_ingest_whispers
           job_cluster_key: etl_cluster
           libraries: &libs
             - requirements: ${workspace.file_path}/cluster_requirements.txt
             - whl: ../dist/*.whl
           notebook_task:
-            notebook_path: ../earnings_whispers_etl/bronze/ingest_products.py
+            notebook_path: ../earnings_whispers_etl/bronze/ingest_whispers.py
             base_parameters: &audit
               full_refresh: "{{job.parameters.full_refresh}}"
               pin_suffix: "{{job.parameters.pin_suffix}}"
               audit_pipeline: "{{job.parameters.audit_pipeline}}"
               audit_task_key: "{{task.name}}"
               audit_notebook_path: "{{task.notebook_path}}"
+          # A missed day is unrecoverable -- the API has no history endpoint -- so retry
+          # transient failures rather than losing the pull.
+          max_retries: 3
+          min_retry_interval_millis: 600000
 
-        - task_key: silver_update_products
+        - task_key: silver_whisper_numbers
           depends_on:
-            - task_key: bronze_ingest_products
+            - task_key: bronze_ingest_whispers
           job_cluster_key: etl_cluster
           libraries: *libs
           notebook_task:
-            notebook_path: ../earnings_whispers_etl/silver/update_silver_products.py
+            notebook_path: ../earnings_whispers_etl/silver/build_whisper_numbers.py
             base_parameters: *audit
-
-        - task_key: gold_update_category_summary
-          depends_on:
-            - task_key: silver_update_products
-          job_cluster_key: etl_cluster
-          libraries: *libs
-          notebook_task:
-            notebook_path: ../earnings_whispers_etl/gold/update_gold_category_summary.py
-            base_parameters: *audit
+          max_retries: 2
+          min_retry_interval_millis: 300000
