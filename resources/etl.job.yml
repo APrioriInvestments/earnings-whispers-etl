@@ -19,11 +19,19 @@ resources:
         - name: audit_pipeline
           default: etl
 
-      # No pause_status: each target's `trigger_pause_status` preset sets it, and a value
-      # here would win over the preset.
+      # Stated inline, deliberately, and driven by a per-target variable. `mode:
+      # development` force-pauses schedules and DABs refuses `trigger_pause_status:
+      # UNPAUSED` under it, so a preset cannot make dev tick; an inline value can,
+      # because presets fill gaps and never override one.
+      #
+      # This trips `bundle-pause-status-inline`, knowingly. Ticking in dev is the point:
+      # the feed is snapshot-only with no history endpoint, so a day nothing runs is
+      # permanently lost. Revert to the preset once stg or prod is the ticking
+      # environment.
       schedule:
         quartz_cron_expression: 0 0 7 * * ?
         timezone_id: America/New_York
+        pause_status: ${var.schedule_pause_status}
 
       job_clusters:
         - job_cluster_key: etl_cluster

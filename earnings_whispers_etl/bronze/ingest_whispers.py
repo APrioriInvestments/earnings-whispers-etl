@@ -93,4 +93,4 @@ print(f"{pull_ts.isoformat()}: appended {len(rows)} rows to {BRONZE_TABLE}")
 
 # COMMAND ----------
 
-record_notebook_pin_usage(runtime)
+record_notebook_pin_usage(spark=spark, runtime=runtime)  # noqa: F821

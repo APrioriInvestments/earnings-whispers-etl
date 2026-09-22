@@ -153,4 +153,4 @@ print(f"rebuilt {SILVER_TABLE}: {n} rows, 0 duplicate backhistory keys, "
 
 # COMMAND ----------
 
-record_notebook_pin_usage(runtime)
+record_notebook_pin_usage(spark=spark, runtime=runtime)  # noqa: F821

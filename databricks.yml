@@ -10,6 +10,11 @@ variables:
     description: Unity Catalog this target writes to. Owned by the platform plane.
   monitoring_job_name:
     description: Pushgateway job name, read by the shared monitoring job.
+  schedule_pause_status:
+    description: >-
+      UNPAUSED where this project should actually tick. Stated on the job rather than as
+      a `trigger_pause_status` preset because `mode: development` force-pauses schedules
+      and rejects an UNPAUSED preset, so dev cannot tick any other way.
   deploy_principal:
     description: >-
       Application id of the service principal that deploys this bundle. Must match the
@@ -39,6 +44,7 @@ targets:
       profile: dev
     variables:
       catalog: earnings_whispers_dev
+      schedule_pause_status: UNPAUSED
       monitoring_job_name: earnings_whispers_etl
       deploy_principal: 9ae5541a-e33a-4851-b1cc-5d87b8a1d4ac
     presets:
@@ -55,13 +61,14 @@ targets:
       root_path: /Workspace/Users/${var.deploy_principal}/.bundle/${bundle.name}/${bundle.target}
     variables:
       catalog: earnings_whispers_stg
+      schedule_pause_status: UNPAUSED
       monitoring_job_name: earnings_whispers_etl
       deploy_principal: 93a43071-b78f-4a6a-882b-441557994cac
     presets:
+      # The job states pause_status inline, so this preset never applies — kept only so
+      # the target reads consistently. `dbxkit lint` FAILs both the inline value and an
+      # unpaused staging trigger; both are knowing deviations.
       trigger_pause_status: UNPAUSED
-      # Staging is the ticking environment here: it runs as a service principal in
-      # no legacy groups, so it exercises the access model a dev run (as the engineer)
-      # would hide. dbxkit lint treats an unpaused staging trigger as a warning.
       tags:
         project: demo
         managed_by: dabs
@@ -73,6 +80,7 @@ targets:
       root_path: /Workspace/Users/${var.deploy_principal}/.bundle/${bundle.name}/${bundle.target}
     variables:
       catalog: earnings_whispers_prod
+      schedule_pause_status: PAUSED
       monitoring_job_name: earnings_whispers_etl
       deploy_principal: df41ba10-6276-47cf-8408-31217af949c2
     presets:
