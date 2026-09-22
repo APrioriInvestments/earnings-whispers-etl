@@ -1,0 +1,23 @@
+[project]
+name = "earnings-whispers-etl"
+version = "0.1.0"
+description = "Template Databricks ETL project scaffold for A Priori"
+readme = "README.md"
+authors = [
+    { name = "Sam Watson", email = "sam.watson@aprioriinvestments.com" }
+]
+requires-python = ">=3.12"
+
+[dependency-groups]
+cluster = [
+    "datapins @ git+ssh://git@github.com/APrioriInvestments/datapins.git@v0.1.2",
+    "databricks-etl-utils @ git+ssh://git@github.com/APrioriInvestments/databricks-etl-utils.git@v0.6.0",
+]
+
+[tool.uv.build-backend]
+module-name = "earnings_whispers_etl"
+module-root = ""
+
+[build-system]
+requires = ["uv-build>=0.11.2,<0.12"]
+build-backend = "uv_build"

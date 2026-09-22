@@ -1,0 +1,3 @@
+[submodule "vendor/databricks-monitoring"]
+	path = vendor/databricks-monitoring
+	url = https://github.com/APrioriInvestments/databricks-monitoring.git

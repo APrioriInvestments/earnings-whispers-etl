@@ -1,0 +1,56 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[codz]
+*$py.class
+
+# C extensions
+*.so
+
+# Distribution / packaging
+build/
+dist/
+wheels/
+*.egg-info/
+*.egg
+
+# uv
+uv.lock
+
+# Unit test / coverage reports
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+.pytest_cache/
+.hypothesis/
+
+# Environments
+.env
+.envrc
+.venv
+env/
+venv/
+ENV/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# mypy
+.mypy_cache/
+
+# Ruff
+.ruff_cache/
+
+# Marimo
+marimo/_static/
+marimo/_lsp/
+__marimo__/
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+
+# Databricks Asset Bundles
+.databricks/
+dist/

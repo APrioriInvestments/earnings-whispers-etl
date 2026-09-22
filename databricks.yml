@@ -1,0 +1,78 @@
+bundle:
+  name: earnings-whispers-etl
+
+include:
+  - resources/*.yml
+  - vendor/databricks-monitoring/bundle/monitoring.job.yml
+
+variables:
+  catalog:
+    description: Unity Catalog this target writes to. Owned by the platform plane.
+  monitoring_job_name:
+    description: Pushgateway job name, read by the shared monitoring job.
+  deploy_principal:
+    description: >-
+      Application id of the service principal that deploys this bundle. Must match the
+      DEPLOY_CLIENT_ID the platform plane publishes to this repo's GitHub Environment —
+      it is the same identity, and root_path depends on it.
+
+sync:
+  exclude:
+    - .github/**
+
+artifacts:
+  default:
+    type: whl
+    build: uv build --wheel
+    path: .
+
+targets:
+  # REPLACE_ME_DEPLOY_PRINCIPAL x3: these exist only once the project's ProjectSpec has
+  # been merged into databricks-account-iac and deployed. Take each from that project's
+  # `<project>-<env>` GitHub Environment, variable DEPLOY_CLIENT_ID.
+  dev:
+    mode: development
+    default: true
+    workspace:
+      host: https://dbc-42940436-10fd.cloud.databricks.com
+      profile: dev
+    variables:
+      catalog: earnings_whispers_dev
+      monitoring_job_name: earnings_whispers_etl
+      deploy_principal: REPLACE_ME_DEPLOY_PRINCIPAL
+    presets:
+      name_prefix: "[dev ${workspace.current_user.short_name}] "
+      trigger_pause_status: PAUSED
+      tags:
+        project: demo
+        managed_by: dabs
+
+  stg:
+    mode: production
+    workspace:
+      host: https://dbc-978d7462-8588.cloud.databricks.com
+      root_path: /Workspace/Users/${var.deploy_principal}/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: earnings_whispers_stg
+      monitoring_job_name: earnings_whispers_etl
+      deploy_principal: REPLACE_ME_DEPLOY_PRINCIPAL
+    presets:
+      trigger_pause_status: PAUSED
+      tags:
+        project: demo
+        managed_by: dabs
+
+  prod:
+    mode: production
+    workspace:
+      host: https://dbc-1d0b2bec-7527.cloud.databricks.com
+      root_path: /Workspace/Users/${var.deploy_principal}/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: earnings_whispers_prod
+      monitoring_job_name: earnings_whispers_etl
+      deploy_principal: REPLACE_ME_DEPLOY_PRINCIPAL
+    presets:
+      trigger_pause_status: UNPAUSED
+      tags:
+        project: demo
+        managed_by: dabs

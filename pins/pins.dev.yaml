@@ -1,0 +1,5 @@
+# Default dev pins config.
+# Developers can point EARNINGS_WHISPERS_ETL_PINS_CONFIG at a personal file if they need overrides.
+
+suffix: null
+pins: {}

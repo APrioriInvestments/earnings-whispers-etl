@@ -1,0 +1,42 @@
+# Drops the example tables and their checkpoints. Tables only: catalogs, schemas and
+# volumes belong to databricks-account-iac, and a bundle must never be able to destroy one.
+# Never scheduled — run it by hand.
+
+resources:
+  jobs:
+    decommissioning:
+      name: ${var.catalog}__decommissioning
+      description: Drop the example tables and checkpoint directories
+      max_concurrent_runs: 1
+
+      webhook_notifications:
+        on_failure:
+          - id: ${var.alerts_destination}
+
+      job_clusters:
+        - job_cluster_key: decommissioning_cluster
+          new_cluster:
+            spark_version: 17.3.x-scala2.13
+            node_type_id: r5d.xlarge
+            num_workers: 0
+            spark_conf:
+              spark.master: local[*]
+              spark.databricks.cluster.profile: singleNode
+            custom_tags:
+              ResourceClass: SingleNode
+            data_security_mode: SINGLE_USER
+            aws_attributes:
+              first_on_demand: 1
+              availability: SPOT_WITH_FALLBACK
+            spark_env_vars:
+              DEPLOY_ENV: ${bundle.target}
+              EARNINGS_WHISPERS_ETL_PINS_CONFIG: ${workspace.file_path}/pins/pins.${bundle.target}.yaml
+
+      tasks:
+        - task_key: decommission
+          job_cluster_key: decommissioning_cluster
+          libraries:
+            - requirements: ${workspace.file_path}/cluster_requirements.txt
+            - whl: ../dist/*.whl
+          notebook_task:
+            notebook_path: ../earnings_whispers_etl/eng/decommission.py

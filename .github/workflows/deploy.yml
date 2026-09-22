@@ -1,0 +1,90 @@
+# Suffixed `.template` so GitHub ignores it here: this repo is the template, and a
+# deploy from it would target a earnings-whispers-etl catalog that does not exist. `dbxkit init`
+# strips the suffix.
+name: deploy
+
+# Production deploys on merge to main. Staging has already deployed from the pull
+# request, so by here the bundle has been applied once.
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: earnings-whispers-etl-prod
+    steps:
+      # databricks.yml includes the shared monitoring job from the submodule, and the
+      # default checkout token is scoped to this repo only, so a private submodule 404s.
+      # This is the org's REPO_ACCESS app, the same one CI uses for private dependencies.
+      - uses: actions/create-github-app-token@v3
+        id: repo-access
+        with:
+          app-id: ${{ vars.REPO_ACCESS_APP_ID }}
+          private-key: ${{ secrets.REPO_ACCESS_SECRET }}
+          owner: APrioriInvestments
+          # dbxkit as well as the monitoring submodule: the export-listing step below
+          # installs it, and both repos are private.
+          repositories: databricks-monitoring,dbxkit
+
+      - uses: actions/checkout@v6
+
+      - name: Fetch the monitoring submodule
+        run: |
+          git config --global url."https://x-access-token:${TOKEN}@github.com/APrioriInvestments/".insteadOf "https://github.com/APrioriInvestments/"
+          git submodule update --init --recursive
+        env:
+          TOKEN: ${{ steps.repo-access.outputs.token }}
+
+      - uses: databricks/setup-cli@main
+
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - run: databricks bundle validate --strict -t prod
+        env: &auth
+          DATABRICKS_AUTH_TYPE: github-oidc
+          DATABRICKS_CLIENT_ID: ${{ vars.DEPLOY_CLIENT_ID }}
+
+      - run: databricks bundle deploy -t prod
+        env: *auth
+
+      - name: Summarise
+        run: databricks bundle summary -t prod >> "$GITHUB_STEP_SUMMARY"
+        env: *auth
+
+      # Publish which job writes which MATLAB export to production.reporting.job_pins, so
+      # "pipeline X failed, which s3 paths are affected?" has an answer that updates itself
+      # instead of living in someone's head.
+      #
+      # After the deploy, deliberately: the rows describe what was just deployed, and a
+      # listing that ran first would describe the previous state on a failed deploy.
+      #
+      # Runs as DEPLOY_CLIENT_ID -- the same `<catalog>__etl` principal the bundle deploys
+      # as, which databricks-account-iac grants MODIFY on `production.reporting`. It holds
+      # no CREATE_TABLE; the table is created by the platform.
+      #
+      # Skipped while REPORTING_WAREHOUSE_ID is unset, so a repo deploys normally before
+      # the variable reaches it. It does NOT continue-on-error once set: a publish that
+      # fails silently leaves a stale listing, which is worse than no listing, because
+      # nothing about it looks wrong.
+      - name: Publish the MATLAB export listing
+        if: vars.REPORTING_WAREHOUSE_ID != ''
+        run: |
+          uv tool install "dbxkit @ git+https://x-access-token:${TOKEN}@github.com/APrioriInvestments/dbxkit.git"
+          dbxkit exports publish . --warehouse-id "${{ vars.REPORTING_WAREHOUSE_ID }}"
+        env:
+          TOKEN: ${{ steps.repo-access.outputs.token }}
+          DATABRICKS_AUTH_TYPE: github-oidc
+          DATABRICKS_CLIENT_ID: ${{ vars.DEPLOY_CLIENT_ID }}
+          DATABRICKS_HOST: https://dbc-1d0b2bec-7527.cloud.databricks.com
