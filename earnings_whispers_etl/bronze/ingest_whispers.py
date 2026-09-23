@@ -29,6 +29,7 @@ from earnings_whispers_etl.util.runtime import (
 
 runtime = configure_notebook_runtime()
 BRONZE_TABLE = pins.table("bronze.whisper_api", output=True)
+SENTIMENT_TABLE = pins.table("bronze.sentiment_api", output=True)
 
 API_URL = "https://www.earningswhispers.com/api/data"
 SECRET_SCOPE = "earnings-whispers-etl"
@@ -38,6 +39,11 @@ SECRET_SCOPE = "earnings-whispers-etl"
 key = dbutils.secrets.get(scope=SECRET_SCOPE, key="api-key")  # noqa: F821
 # the key is licensed percent-encoded, as it appears in the feed URLs
 key = urllib.parse.unquote(key) if "%" in key else key
+
+
+def _d(s):
+    """Vendor ISO date string -> date. Absent and empty both mean no value."""
+    return datetime.fromisoformat(s).date() if s else None
 
 
 def fetch(dataset: str) -> list[dict]:
@@ -59,9 +65,11 @@ def fetch(dataset: str) -> list[dict]:
 
 pull_ts = datetime.now(timezone.utc)
 
-# sentiment covers the whole universe (~3k tickers); whisper covers only the companies
-# with an upcoming report, so sentiment is the lookup and whisper is the driver
-sentiment = {r["ticker"]: r["sentiment"] for r in fetch("sentiment")}
+# One fetch, two tables. `whisper_api` keeps only the companies with an upcoming
+# report; `sentiment_api` keeps the whole ~3.2k-ticker panel. Sharing the fetch means
+# both tables describe the same snapshot rather than two calls minutes apart.
+sentiment_rows = fetch("sentiment")
+sentiment = {r["ticker"]: r["sentiment"] for r in sentiment_rows}
 rows = [
     (
         r["ticker"],
@@ -90,6 +98,67 @@ if not rows:
 )
 
 print(f"{pull_ts.isoformat()}: appended {len(rows)} rows to {BRONZE_TABLE}")
+
+# COMMAND ----------
+
+# The full sentiment panel. `whisper_api` keeps sentiment only for the handful of
+# tickers reporting soon, which discards a daily reading for ~3.2k others -- and the
+# feed is snapshot-only with no history endpoint, so a day not landed is gone. Measured
+# over the first two weeks: whisper_number never changed across pulls (0 of 63 reports)
+# while sentiment changed for 52 of them, so this is the half that actually moves.
+#
+# Every vendor field is kept: they are all part of the snapshot and none can be
+# recovered later. `currentDate` becomes `as_of_date` -- `current_date` is a Spark
+# builtin and an awkward column name to quote everywhere downstream.
+panel = [
+    (
+        r["ticker"],
+        pull_ts,
+        _d(r.get("currentDate")),
+        _d(r.get("firstDate")),
+        _d(r.get("lastDate")),
+        r.get("sentiment"),
+        r.get("sentChange"),
+        r.get("avgSent"),
+        r.get("total"),
+        r.get("avgMonthlyGain"),
+        r.get("avgQuarterlyGain"),
+        r.get("monthlySuccess"),
+        r.get("quarterlySuccess"),
+        r.get("sentChangeTotal"),
+        r.get("sentChangeMonthlyGain"),
+        r.get("sentChangeQuarterlyGain"),
+        r.get("sentChangeMonthlySuccess"),
+        r.get("sentChangeQuarterlySuccess"),
+        r.get("combinedTotal"),
+        r.get("combinedMonthlyGain"),
+        r.get("combinedQuarterlyGain"),
+        r.get("combinedMonthlySuccess"),
+        r.get("combinedQuarterlySuccess"),
+    )
+    for r in sentiment_rows
+]
+if not panel:
+    raise RuntimeError(f"sentiment feed was empty at {pull_ts.isoformat()}")
+
+(
+    spark.createDataFrame(  # noqa: F821
+        panel,
+        "ticker string, timestamp timestamp, as_of_date date, first_date date, "
+        "last_date date, sentiment double, sent_change double, avg_sent double, "
+        "total int, avg_monthly_gain double, avg_quarterly_gain double, "
+        "monthly_success double, quarterly_success double, sent_change_total int, "
+        "sent_change_monthly_gain double, sent_change_quarterly_gain double, "
+        "sent_change_monthly_success double, sent_change_quarterly_success double, "
+        "combined_total int, combined_monthly_gain double, "
+        "combined_quarterly_gain double, combined_monthly_success double, "
+        "combined_quarterly_success double",
+    )
+    .write.mode("append")
+    .saveAsTable(SENTIMENT_TABLE)
+)
+
+print(f"{pull_ts.isoformat()}: appended {len(panel)} rows to {SENTIMENT_TABLE}")
 
 # COMMAND ----------
 

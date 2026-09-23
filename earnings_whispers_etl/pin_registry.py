@@ -16,6 +16,10 @@ pins.register_table(
 )
 pins.register_table("bronze.whisper_api", f"{DEFAULT_CATALOG}.bronze.whisper_api")
 
+# The full ~3.2k-ticker sentiment panel, one snapshot per run. Separate from
+# whisper_api, which keeps sentiment only for tickers reporting soon.
+pins.register_table("bronze.sentiment_api", f"{DEFAULT_CATALOG}.bronze.sentiment_api")
+
 # Derived, and rebuilt in full on every run so the dedupe and join rules stay re-runnable
 # rather than baked into whatever order things happened to land.
 pins.register_table(
