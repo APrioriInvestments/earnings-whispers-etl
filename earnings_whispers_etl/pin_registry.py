@@ -16,12 +16,20 @@ pins.register_table(
 )
 pins.register_table("bronze.whisper_api", f"{DEFAULT_CATALOG}.bronze.whisper_api")
 
+# The full ~3.2k-ticker sentiment panel, one snapshot per run. Separate from
+# whisper_api, which keeps sentiment only for tickers reporting soon.
+pins.register_table("bronze.sentiment_api", f"{DEFAULT_CATALOG}.bronze.sentiment_api")
+
 # Derived, and rebuilt in full on every run so the dedupe and join rules stay re-runnable
 # rather than baked into whatever order things happened to land.
 pins.register_table(
     "silver.whisper_numbers",
     f"{DEFAULT_CATALOG}.silver.whisper_numbers",
 )
+
+# Gold: the presentation cut -- silver without the columns a consumer of the MATLAB
+# export does not use (ticker, release_time, confirmed, source).
+pins.register_table("gold.whisper_numbers", f"{DEFAULT_CATALOG}.gold.whisper_numbers")
 
 pins.register_table(
     "eng.pin_audit",
@@ -31,3 +39,4 @@ pins.register_table(
 # No checkpoints: neither task streams. Both are batch, and silver is a full rebuild.
 pins.register_volume("eng.config", f"/Volumes/{DEFAULT_CATALOG}/eng/config")
 pins.register_volume("eng.logs", f"/Volumes/{DEFAULT_CATALOG}/eng/logs")
+pins.register_volume("matlab.exports", f"/Volumes/{DEFAULT_CATALOG}/matlab/exports")

@@ -92,3 +92,25 @@ resources:
             base_parameters: *audit
           max_retries: 2
           min_retry_interval_millis: 300000
+
+        - task_key: gold_whisper_numbers
+          depends_on:
+            - task_key: silver_whisper_numbers
+          job_cluster_key: etl_cluster
+          libraries: *libs
+          notebook_task:
+            notebook_path: ../earnings_whispers_etl/gold/build_whisper_numbers.py
+            base_parameters: *audit
+          max_retries: 2
+          min_retry_interval_millis: 300000
+
+        - task_key: gold_matlabify
+          depends_on:
+            - task_key: gold_whisper_numbers
+          job_cluster_key: etl_cluster
+          libraries: *libs
+          notebook_task:
+            notebook_path: ../earnings_whispers_etl/gold/matlabify.py
+            base_parameters: *audit
+          max_retries: 1
+          min_retry_interval_millis: 300000

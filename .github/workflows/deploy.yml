@@ -21,7 +21,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment: earnings-whispers-etl-prod
+    environment: earnings-whispers-prod
     steps:
       # databricks.yml includes the shared monitoring job from the submodule, and the
       # default checkout token is scoped to this repo only, so a private submodule 404s.

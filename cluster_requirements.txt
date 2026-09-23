@@ -7,5 +7,9 @@ databricks-etl-utils==0.6.0
     # via earnings-whispers-etl (pyproject.toml:cluster)
 datapins==0.1.2
     # via earnings-whispers-etl (pyproject.toml:cluster)
+numpy==2.5.2
+    # via scipy
 pyyaml==6.0.3
     # via datapins
+scipy==1.18.1
+    # via earnings-whispers-etl (pyproject.toml:cluster)
